@@ -1,1 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>単語学習 - 日本語単語帳</title>
+  <meta name="description" content="間隔反復アルゴリズムとテーマ別単語集で効率的に日本語を学習できるウェブアプリ。ベトナム語対応。">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase SDKs (v10 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
 
+  <!-- ======================================== -->
+  <!-- AUTH SCREEN (Login / Register)           -->
+  <!-- ======================================== -->
+  <div id="auth-screen" class="auth-wrapper">
+    <div class="auth-container">
+      <div class="auth-logo">
+        <div class="auth-logo-icon"><i data-lucide="book-marked"></i></div>
+        <h1>単語学習</h1>
+        <p>日本語の単語を効率的に学ぼう</p>
+      </div>
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchAuthTab('login')">ログイン</button>
+          <button class="auth-tab" onclick="switchAuthTab('register')">新規登録</button>
+        </div>
+        <!-- Login Form -->
+        <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+          <div id="login-error" class="auth-error hidden"></div>
+          <div class="form-group">
+            <label for="login-email">メールアドレス</label>
+            <input type="email" id="login-email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="login-password">パスワード</label>
+            <input type="password" id="login-password" required placeholder="••••••••" minlength="6">
+          </div>
+          <button type="submit" class="auth-submit" id="login-btn">ログイン</button>
+          <div class="auth-footer-link">
+            <a onclick="handlePasswordReset()">パスワードをお忘れですか？</a>
+          </div>
+        </form>
+        <!-- Register Form -->
+        <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+          <div id="register-error" class="auth-error hidden"></div>
+          <div class="form-group">
+            <label for="register-email">メールアドレス</label>
+            <input type="email" id="register-email" required placeholder="you@example.com">
+          </div>
+          <div class="form-group">
+            <label for="register-password">パスワード (6文字以上)</label>
+            <input type="password" id="register-password" required placeholder="••••••••" minlength="6">
+          </div>
+          <div class="form-group">
+            <label for="register-password-confirm">パスワード確認</label>
+            <input type="password" id="register-password-confirm" required placeholder="••••••••" minlength="6">
+          </div>
+          <button type="submit" class="auth-submit" id="register-btn">アカウントを作成</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================== -->
+  <!-- MAIN APP (shown after login)             -->
+  <!-- ======================================== -->
+  <div id="app-screen" class="hidden">
+
+    <!-- Header -->
+    <header>
+      <div class="container header-content">
+        <div class="logo">
+          <i data-lucide="book-marked"></i>
+          <span>単語学習</span>
+        </div>
+        <nav>
+          <button id="nav-dashboard" class="nav-btn active" onclick="switchView('dashboard')">
+            <i data-lucide="layout-dashboard"></i>
+            <span class="nav-label">ダッシュボード</span>
+          </button>
+          <button id="nav-vocab" class="nav-btn" onclick="switchView('vocab')">
+            <i data-lucide="book-open"></i>
+            <span class="nav-label">単語一覧</span>
+          </button>
+          <button id="nav-library" class="nav-btn" onclick="switchView('library')">
+            <i data-lucide="library"></i>
+            <span class="nav-label">単語集</span>
+          </button>
+          <button id="nav-review" class="nav-btn" onclick="startReviewSession()">
+            <i data-lucide="play-circle"></i>
+            <span class="nav-label">復習</span>
+          </button>
+        </nav>
+        <div class="user-menu">
+          <span id="user-email-display" class="user-email"></span>
+          <button class="btn-logout" onclick="handleLogout()">
+            <i data-lucide="log-out"></i> ログアウト
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+
+      <!-- 1. Dashboard View -->
+      <section id="dashboard-view" class="view-section">
+        <div class="dashboard-grid">
+          <div class="stat-card">
+            <div class="stat-icon warning"><i data-lucide="calendar-clock"></i></div>
+            <div class="stat-info"><h3>今日の復習</h3><p id="stat-due-count">0</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon primary"><i data-lucide="graduation-cap"></i></div>
+            <div class="stat-info"><h3>学習中</h3><p id="stat-learning-count">0</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon success"><i data-lucide="check-circle-2"></i></div>
+            <div class="stat-info"><h3>習得済み</h3><p id="stat-learned-count">0</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon danger"><i data-lucide="layers"></i></div>
+            <div class="stat-info"><h3>登録単語数</h3><p id="stat-total-count">0</p></div>
+          </div>
+        </div>
+        <div class="dashboard-actions-section">
+          <div class="chart-card">
+            <h2><i data-lucide="bar-chart-3" style="color: var(--color-primary);"></i> 学習ステータス</h2>
+            <div class="chart-container"><canvas id="statusChart"></canvas></div>
+          </div>
+          <div class="quick-actions-card">
+            <h2><i data-lucide="sparkles" style="color: var(--color-warning);"></i> クイック操作</h2>
+            <div class="quick-actions-list">
+              <button class="btn btn-primary" onclick="startReviewSession()"><i data-lucide="play"></i> 復習を開始</button>
+              <button class="btn btn-secondary" onclick="openAddModal()"><i data-lucide="plus"></i> 単語を追加</button>
+              <button class="btn btn-outline" onclick="switchView('library')"><i data-lucide="library"></i> 単語集を見る</button>
+            </div>
+          </div>
+        </div>
+        <!-- Backup -->
+        <div class="backup-card">
+          <h2><i data-lucide="database" style="color: var(--text-muted)"></i> データの管理</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">データのバックアップや復元ができます。</p>
+          <div class="backup-buttons">
+            <button class="btn btn-outline" onclick="exportData()"><i data-lucide="download"></i> バックアップ</button>
+            <div class="file-input-wrapper">
+              <button class="btn btn-outline"><i data-lucide="upload"></i> 復元</button>
+              <input type="file" id="import-file" accept=".json" onchange="importData(event)">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Review Session View -->
+      <section id="review-view" class="view-section hidden">
+        <div class="review-container">
+          <div class="progress-bar-container">
+            <div id="review-progress" class="progress-bar"></div>
+          </div>
+          <span id="review-progress-text" class="progress-text">残り 0 枚</span>
+          <!-- Flashcard -->
+          <div id="flashcard" class="flashcard" onclick="flipCard()">
+            <div class="flashcard-inner">
+              <div class="flashcard-front">
+                <span class="card-hint-badge">タップして意味を表示</span>
+                <div>
+                  <div class="card-main-word" id="card-word">単語</div>
+                  <div class="card-reading" id="card-reading"></div>
+                </div>
+                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックでめくる</div>
+              </div>
+              <div class="flashcard-back">
+                <div class="card-back-content">
+                  <span class="card-hint-badge">意味・解説</span>
+                  <div class="card-meaning" id="card-meaning">意味</div>
+                  <div class="card-meaning-vi" id="card-meaning-vi"></div>
+                  <div class="card-example" id="card-example">例文</div>
+                </div>
+                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックで戻る</div>
+              </div>
+            </div>
+          </div>
+          <!-- Scratchpad -->
+          <div id="scratchpad-area" class="scratchpad-container">
+            <div class="scratchpad-header">
+              <span class="scratchpad-title"><i data-lucide="pen-tool"></i> 漢字練習エリア</span>
+              <button class="btn btn-outline btn-sm" onclick="clearScratchpad(event)" type="button">
+                <i data-lucide="eraser" style="width: 0.9rem; height: 0.9rem;"></i> クリア
+              </button>
+            </div>
+            <canvas id="scratchpad" class="scratchpad-canvas" width="500" height="160"></canvas>
+          </div>
+          <!-- Controls -->
+          <div class="review-actions">
+            <div id="reveal-instruction" style="font-size: 0.9rem; color: var(--text-muted);">カードをクリックして答えを確認してください</div>
+            <div id="answer-controls" class="answer-btns hidden">
+              <button class="btn btn-answer btn-again" onclick="submitAnswer(1)"><span>もう一度</span><small>Again</small></button>
+              <button class="btn btn-answer btn-hard" onclick="submitAnswer(3)"><span>難しい</span><small>Hard</small></button>
+              <button class="btn btn-answer btn-good" onclick="submitAnswer(5)"><span>覚えた</span><small>Good</small></button>
+            </div>
+            <button class="btn btn-outline" onclick="exitReviewSession()" style="margin-top: 1rem;"><i data-lucide="x"></i> 復習を終了</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Vocabulary List View -->
+      <section id="vocab-view" class="view-section hidden">
+        <div class="vocab-header">
+          <div class="search-filter-bar">
+            <div class="search-input-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" id="search-bar" placeholder="単語や意味で検索..." oninput="filterVocab()">
+            </div>
+            <select id="filter-status" class="filter-select" onchange="filterVocab()">
+              <option value="all">すべて</option>
+              <option value="new">新規</option>
+              <option value="learning">学習中</option>
+              <option value="learned">習得済み</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="openAddModal()"><i data-lucide="plus"></i> 単語を追加</button>
+        </div>
+        <div id="vocab-grid" class="vocab-grid"></div>
+        <div id="vocab-empty-state" class="empty-state hidden">
+          <div class="empty-icon"><i data-lucide="inbox"></i></div>
+          <h3>単語が見つかりません</h3>
+          <p>単語集ライブラリから追加するか、手動で入力してください。</p>
+          <button class="btn btn-primary" onclick="switchView('library')"><i data-lucide="library"></i> 単語集を見る</button>
+        </div>
+      </section>
+
+      <!-- 4. Library View (Browse Vocab Sets) -->
+      <section id="library-view" class="view-section hidden">
+        <h2 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 0.5rem;">📚 単語集ライブラリ / Thư viện bộ từ</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">テーマ別・JLPT別の単語セットを自分の単語帳に追加できます。</p>
+        <div class="library-filters" id="library-filters">
+          <button class="filter-chip active" onclick="filterLibrary('all')">すべて</button>
+          <button class="filter-chip" onclick="filterLibrary('jlpt')">JLPT レベル別</button>
+          <button class="filter-chip" onclick="filterLibrary('theme')">テーマ別</button>
+        </div>
+        <div id="library-grid" class="library-grid"></div>
+      </section>
+
+    </main>
+
+    <footer>
+      <div class="container"><p>&copy; 2026 単語学習. All rights reserved.</p></div>
+    </footer>
+  </div>
+
+  <!-- Modal: Add/Edit Word -->
+  <div id="word-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新しい単語を追加</h3>
+        <button class="modal-close" onclick="closeWordModal()">&times;</button>
+      </div>
+      <form id="word-form" onsubmit="saveWord(event)">
+        <input type="hidden" id="word-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="form-word">単語 <span style="color: var(--color-danger)">*</span></label>
+            <input type="text" id="form-word" required placeholder="例: 一期一会">
+          </div>
+          <div class="form-group">
+            <label for="form-reading">よみがな</label>
+            <input type="text" id="form-reading" placeholder="例: いちごいちえ">
+          </div>
+          <div class="form-group">
+            <label for="form-meaning">意味 (日本語) <span style="color: var(--color-danger)">*</span></label>
+            <input type="text" id="form-meaning" required placeholder="例: 一生に一度だけの機会">
+          </div>
+          <div class="form-group">
+            <label for="form-meaning-vi">Nghĩa tiếng Việt</label>
+            <input type="text" id="form-meaning-vi" placeholder="Ví dụ: Cơ hội chỉ có một lần trong đời">
+          </div>
+          <div class="form-group">
+            <label for="form-example">例文 (任意)</label>
+            <textarea id="form-example" rows="2" placeholder="例: 一期一会の精神でおもてなしをする。"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeWordModal()">キャンセル</button>
+          <button type="submit" class="btn btn-primary">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="vocab-library.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
