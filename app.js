@@ -67,8 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('app-screen').classList.add('hidden');
   }
 
-  // Setup canvas
-  initScratchpad();
 });
 
 // ============================================
@@ -559,7 +557,6 @@ function showCard() {
   document.getElementById('card-example').innerText = card.example || '';
   
   updateProgress();
-  clearScratchpad();
 }
 
 function flipCard() {
@@ -609,86 +606,6 @@ function exitReviewSession() {
   switchView('dashboard');
 }
 
-// ============================================
-// CANVAS SCRATCHPAD
-// ============================================
-let canvas, ctx;
-let isDrawing = false;
-
-function initScratchpad() {
-  canvas = document.getElementById('scratchpad');
-  if (!canvas) return;
-  ctx = canvas.getContext('2d');
-  
-  // Make it responsive but maintain coordinate accuracy
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  
-  ctx.lineWidth = 4;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#1e293b';
-
-  // Mouse events
-  canvas.addEventListener('mousedown', startDrawing);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDrawing);
-  canvas.addEventListener('mouseout', stopDrawing);
-
-  // Touch events
-  canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
-  canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
-  canvas.addEventListener('touchend', stopDrawing);
-}
-
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  
-  let clientX = e.clientX;
-  let clientY = e.clientY;
-  
-  if (e.touches && e.touches.length > 0) {
-    clientX = e.touches[0].clientX;
-    clientY = e.touches[0].clientY;
-  }
-  
-  return {
-    x: (clientX - rect.left) * scaleX,
-    y: (clientY - rect.top) * scaleY
-  };
-}
-
-function startDrawing(e) {
-  isDrawing = true;
-  const pos = getPos(e);
-  ctx.beginPath();
-  ctx.moveTo(pos.x, pos.y);
-}
-
-function draw(e) {
-  if (!isDrawing) return;
-  e.preventDefault(); // Prevent scrolling on touch
-  const pos = getPos(e);
-  ctx.lineTo(pos.x, pos.y);
-  ctx.stroke();
-}
-
-function stopDrawing() {
-  isDrawing = false;
-  ctx.closePath();
-}
-
-function handleTouchStart(e) { e.preventDefault(); startDrawing(e); }
-function handleTouchMove(e) { e.preventDefault(); draw(e); }
-
-function clearScratchpad(e) {
-  if(e) e.stopPropagation(); // prevent flipping card if button is clicked
-  if(ctx && canvas) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-}
 
 // ============================================
 // BACKUP / EXPORT
