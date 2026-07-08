@@ -4,12 +4,13 @@
 // TODO: ここにFirebaseのプロジェクト設定を貼り付けます。
 // （後ほど案内する手順に沿って取得してください）
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyARBZCcW2rcMaSETIPTt53y5LUyzZmR0AI",
+  authDomain: "nihongo-a0795.firebaseapp.com",
+  projectId: "nihongo-a0795",
+  storageBucket: "nihongo-a0795.firebasestorage.app",
+  messagingSenderId: "92477688249",
+  appId: "1:92477688249:web:6cb13bd33fe06e3fa88e68",
+  measurementId: "G-0KL4T6F2EC"
 };
 
 // Initialize Firebase (エラーハンドリング付き)
@@ -724,4 +725,3 @@ function importData(event) {
   };
   reader.readAsText(file);
 }
-
