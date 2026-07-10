@@ -6,7 +6,8 @@
   <title>単語学習 - 日本語単語帳</title>
   <meta name="description" content="間隔反復アルゴリズムとテーマ別単語集で効率的に日本語を学習できるウェブアプリ。ベトナム語対応。">
   <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Pinned Lucide version (Issue #3.3) -->
+  <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Firebase SDKs (v10 compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -27,11 +28,11 @@
       </div>
       <div class="auth-card">
         <div class="auth-tabs">
-          <button class="auth-tab active" onclick="switchAuthTab('login')">ログイン</button>
-          <button class="auth-tab" onclick="switchAuthTab('register')">新規登録</button>
+          <button class="auth-tab active" id="tab-login-btn">ログイン</button>
+          <button class="auth-tab" id="tab-register-btn">新規登録</button>
         </div>
         <!-- Login Form -->
-        <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <form id="login-form" class="auth-form">
           <div id="login-error" class="auth-error hidden"></div>
           <div class="form-group">
             <label for="login-email">メールアドレス</label>
@@ -43,11 +44,11 @@
           </div>
           <button type="submit" class="auth-submit" id="login-btn">ログイン</button>
           <div class="auth-footer-link">
-            <a onclick="handlePasswordReset()">パスワードをお忘れですか？</a>
+            <a id="btn-forgot-password" tabindex="0" role="button">パスワードをお忘れですか？</a>
           </div>
         </form>
         <!-- Register Form -->
-        <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+        <form id="register-form" class="auth-form hidden">
           <div id="register-error" class="auth-error hidden"></div>
           <div class="form-group">
             <label for="register-email">メールアドレス</label>
@@ -80,26 +81,29 @@
           <span>単語学習</span>
         </div>
         <nav>
-          <button id="nav-dashboard" class="nav-btn active" onclick="switchView('dashboard')">
+          <button id="nav-dashboard" class="nav-btn active">
             <i data-lucide="layout-dashboard"></i>
             <span class="nav-label">ダッシュボード</span>
           </button>
-          <button id="nav-vocab" class="nav-btn" onclick="switchView('vocab')">
+          <button id="nav-vocab" class="nav-btn">
             <i data-lucide="book-open"></i>
             <span class="nav-label">単語一覧</span>
           </button>
-          <button id="nav-library" class="nav-btn" onclick="switchView('library')">
+          <button id="nav-library" class="nav-btn">
             <i data-lucide="library"></i>
             <span class="nav-label">単語集</span>
           </button>
-          <button id="nav-review" class="nav-btn" onclick="startReviewSession()">
+          <button id="nav-review" class="nav-btn">
             <i data-lucide="play-circle"></i>
             <span class="nav-label">復習</span>
           </button>
         </nav>
         <div class="user-menu">
+          <button id="theme-toggle-btn" class="nav-btn" aria-label="テーマ切り替え">
+            <i data-lucide="moon"></i>
+          </button>
           <span id="user-email-display" class="user-email"></span>
-          <button class="btn-logout" onclick="handleLogout()">
+          <button id="btn-logout-main" class="btn-logout">
             <i data-lucide="log-out"></i> ログアウト
           </button>
         </div>
@@ -136,9 +140,9 @@
           <div class="quick-actions-card">
             <h2><i data-lucide="sparkles" style="color: var(--color-warning);"></i> クイック操作</h2>
             <div class="quick-actions-list">
-              <button class="btn btn-primary" onclick="startReviewSession()"><i data-lucide="play"></i> 復習を開始</button>
-              <button class="btn btn-secondary" onclick="openAddModal()"><i data-lucide="plus"></i> 単語を追加</button>
-              <button class="btn btn-outline" onclick="switchView('library')"><i data-lucide="library"></i> 単語集を見る</button>
+              <button class="btn btn-primary" id="btn-quick-review"><i data-lucide="play"></i> 復習を開始</button>
+              <button class="btn btn-secondary" id="btn-quick-add"><i data-lucide="plus"></i> 単語を追加</button>
+              <button class="btn btn-outline" id="btn-quick-lib"><i data-lucide="library"></i> 単語集を見る</button>
             </div>
           </div>
         </div>
@@ -147,10 +151,10 @@
           <h2><i data-lucide="database" style="color: var(--text-muted)"></i> データの管理</h2>
           <p style="color: var(--text-muted); font-size: 0.9rem;">データのバックアップや復元ができます。</p>
           <div class="backup-buttons">
-            <button class="btn btn-outline" onclick="exportData()"><i data-lucide="download"></i> バックアップ</button>
+            <button class="btn btn-outline" id="btn-export"><i data-lucide="download"></i> バックアップ</button>
             <div class="file-input-wrapper">
               <button class="btn btn-outline"><i data-lucide="upload"></i> 復元</button>
-              <input type="file" id="import-file" accept=".json" onchange="importData(event)">
+              <input type="file" id="import-file" accept=".json">
             </div>
           </div>
         </div>
@@ -164,7 +168,7 @@
           </div>
           <span id="review-progress-text" class="progress-text">残り 0 枚</span>
           <!-- Flashcard -->
-          <div id="flashcard" class="flashcard" onclick="flipCard()">
+          <div id="flashcard" class="flashcard">
             <div class="flashcard-inner">
               <div class="flashcard-front">
                 <span class="card-hint-badge">タップして意味を表示</span>
@@ -172,7 +176,7 @@
                   <div class="card-main-word" id="card-word">単語</div>
                   <div class="card-reading" id="card-reading"></div>
                 </div>
-                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックでめくる</div>
+                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックまたは Space / Enter でめくる</div>
               </div>
               <div class="flashcard-back">
                 <div class="card-back-content">
@@ -181,20 +185,20 @@
                   <div class="card-meaning-vi" id="card-meaning-vi"></div>
                   <div class="card-example" id="card-example">例文</div>
                 </div>
-                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックで戻る</div>
+                <div class="card-prompt"><i data-lucide="refresh-cw"></i> クリックまたは Space / Enter で戻る</div>
               </div>
             </div>
           </div>
-
+          
           <!-- Controls -->
           <div class="review-actions">
             <div id="reveal-instruction" style="font-size: 0.9rem; color: var(--text-muted);">カードをクリックして答えを確認してください</div>
             <div id="answer-controls" class="answer-btns hidden">
-              <button class="btn btn-answer btn-again" onclick="submitAnswer(1)"><span>もう一度</span><small>Again</small></button>
-              <button class="btn btn-answer btn-hard" onclick="submitAnswer(3)"><span>難しい</span><small>Hard</small></button>
-              <button class="btn btn-answer btn-good" onclick="submitAnswer(5)"><span>覚えた</span><small>Good</small></button>
+              <button class="btn btn-answer btn-again" id="btn-ans-again"><span>もう一度</span><small>Again (1)</small></button>
+              <button class="btn btn-answer btn-hard" id="btn-ans-hard"><span>難しい</span><small>Hard (2)</small></button>
+              <button class="btn btn-answer btn-good" id="btn-ans-good"><span>覚えた</span><small>Good (3)</small></button>
             </div>
-            <button class="btn btn-outline" onclick="exitReviewSession()" style="margin-top: 1rem;"><i data-lucide="x"></i> 復習を終了</button>
+            <button class="btn btn-outline" id="btn-exit-review" style="margin-top: 1rem;"><i data-lucide="x"></i> 復習を終了</button>
           </div>
         </div>
       </section>
@@ -205,23 +209,23 @@
           <div class="search-filter-bar">
             <div class="search-input-wrapper">
               <i data-lucide="search"></i>
-              <input type="text" id="search-bar" placeholder="単語や意味で検索..." oninput="filterVocab()">
+              <input type="text" id="search-bar" placeholder="単語や意味で検索...">
             </div>
-            <select id="filter-status" class="filter-select" onchange="filterVocab()">
+            <select id="filter-status" class="filter-select">
               <option value="all">すべて</option>
               <option value="new">新規</option>
               <option value="learning">学習中</option>
               <option value="learned">習得済み</option>
             </select>
           </div>
-          <button class="btn btn-primary" onclick="openAddModal()"><i data-lucide="plus"></i> 単語を追加</button>
+          <button class="btn btn-primary" id="btn-add-vocab"><i data-lucide="plus"></i> 単語を追加</button>
         </div>
         <div id="vocab-grid" class="vocab-grid"></div>
         <div id="vocab-empty-state" class="empty-state hidden">
           <div class="empty-icon"><i data-lucide="inbox"></i></div>
           <h3>単語が見つかりません</h3>
           <p>単語集ライブラリから追加するか、手動で入力してください。</p>
-          <button class="btn btn-primary" onclick="switchView('library')"><i data-lucide="library"></i> 単語集を見る</button>
+          <button class="btn btn-primary" id="btn-empty-lib"><i data-lucide="library"></i> 単語集を見る</button>
         </div>
       </section>
 
@@ -230,9 +234,9 @@
         <h2 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 0.5rem;">📚 単語集ライブラリ / Thư viện bộ từ</h2>
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">テーマ別・JLPT別の単語セットを自分の単語帳に追加できます。</p>
         <div class="library-filters" id="library-filters">
-          <button class="filter-chip active" onclick="filterLibrary('all')">すべて</button>
-          <button class="filter-chip" onclick="filterLibrary('jlpt')">JLPT レベル別</button>
-          <button class="filter-chip" onclick="filterLibrary('theme')">テーマ別</button>
+          <button class="filter-chip active" id="filter-lib-all">すべて</button>
+          <button class="filter-chip" id="filter-lib-jlpt">JLPT レベル別</button>
+          <button class="filter-chip" id="filter-lib-theme">テーマ別</button>
         </div>
         <div id="library-grid" class="library-grid"></div>
       </section>
@@ -249,9 +253,9 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modal-title">新しい単語を追加</h3>
-        <button class="modal-close" onclick="closeWordModal()">&times;</button>
+        <button class="modal-close" aria-label="閉じる">&times;</button>
       </div>
-      <form id="word-form" onsubmit="saveWord(event)">
+      <form id="word-form">
         <input type="hidden" id="word-id">
         <div class="modal-body">
           <div class="form-group">
@@ -276,17 +280,30 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline" onclick="closeWordModal()">キャンセル</button>
+          <button type="button" class="btn btn-outline" id="btn-cancel-modal">キャンセル</button>
           <button type="submit" class="btn btn-primary">保存する</button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- Custom Confirm Overlay -->
+  <div id="custom-confirm-overlay" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-body">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; text-align: center;" id="custom-confirm-msg">よろしいですか？</h3>
+        <div style="display: flex; justify-content: center; gap: 1rem;">
+          <button class="btn btn-outline" id="custom-confirm-no">キャンセル</button>
+          <button class="btn btn-danger" id="custom-confirm-yes">削除する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Scripts -->
+  <!-- Scripts (ES Modules) -->
   <script src="vocab-library.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
